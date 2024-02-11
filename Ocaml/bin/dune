@@ -1,0 +1,4 @@
+(executable
+ (public_name vm_challenge)
+ (name main)
+ (libraries vm_challenge))
