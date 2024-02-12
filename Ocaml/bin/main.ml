@@ -183,6 +183,29 @@ let out' state pc =
   print_char char;
   pc + 2
 
+let buffer = ref Seq.Nil
+let read_input () =
+  match !buffer with
+  | Seq.Nil ->
+     begin
+       let input = (read_line ()) ^ "\n" in
+       match String.to_seq input () with
+       | Seq.Cons (char, rest) ->
+          buffer := rest ();
+          char
+       | Seq.Nil -> failwith "unreachable"
+     end
+  | Seq.Cons (char, rest) ->
+     buffer := rest ();
+     char
+
+let in' state pc =
+  let dest = read_mem state (pc + 1) in
+  let input = read_input () in
+  let value = int_of_char input in
+  write state dest value;
+  pc + 2
+
 let noop _state pc = pc + 1
 
 let rec exec state pc =
@@ -207,6 +230,7 @@ let rec exec state pc =
     | 17 -> call
     | 18 -> ret
     | 19 -> out'
+    | 20 -> in'
     | 21 -> noop
     | instr ->
        Printf.eprintf "Warning: unknown instruction at %d: %d\n" pc instr;
