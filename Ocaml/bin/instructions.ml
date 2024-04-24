@@ -2,12 +2,19 @@ module type Instruction = sig
 
   val opcode : int
   val run : State.state -> int -> int
+  val disassemble : int array -> int -> int
   
 end
+
+exception Unknown_instruction of int
 
 module Halt : Instruction = struct
   let opcode = 0
   let run _state _pc = raise Machine.Machine_halt
+
+  let disassemble _mem index =
+    Printf.printf "%d\thalt\n" index;
+    index + 1
 end
 
 module Set : Instruction = struct
@@ -17,6 +24,10 @@ module Set : Instruction = struct
     let orig = State.(read state (read_mem state (pc + 2))) in
     State.write state dest orig;
     pc + 3
+
+  let disassemble memory i =
+    Printf.printf "%d\tset\t%d\t%d\n" i memory.(i + 1) memory.(i + 2);
+    i + 3
 end
 
 module Push : Instruction = struct
@@ -25,6 +36,10 @@ module Push : Instruction = struct
     let value = State.(read state (read_mem state (pc + 1))) in
     State.write_stack state value;
     pc + 2
+
+  let disassemble memory i =
+    Printf.printf "%d\tpush\t%d\n" i memory.(i + 1);
+    i + 2
 end
 
 module Pop : Instruction = struct
@@ -37,6 +52,10 @@ module Pop : Instruction = struct
       pc + 2
     with
       Stack.Empty -> raise Machine.Memory.Machine_empty_stack
+
+  let disassemble memory i =
+    Printf.printf "%d\tpop\t%d\n" i memory.(i + 1);
+    i + 2
 end
 
 module Eq : Instruction = struct
@@ -48,6 +67,10 @@ module Eq : Instruction = struct
     let res  = if op1 = op2 then 1 else 0           in
     State.write state dest res;
     pc + 4
+
+  let disassemble memory i =
+    Printf.printf "%d\teq\t%d\t%d\t%d\n" i memory.(i + 1) memory.(i + 2) memory.(i + 3);
+    i + 4
 end
 
 module Gt : Instruction = struct
@@ -59,12 +82,20 @@ module Gt : Instruction = struct
     let res  = if op1 > op2 then 1 else 0           in
     State.write state dest res;
     pc + 4
+
+  let disassemble memory i =
+    Printf.printf "%d\tgt\t%d\t%d\t%d\n" i memory.(i + 1) memory.(i + 2) memory.(i + 3);
+    i + 4
 end
 
 module Jmp : Instruction = struct
   let opcode = 6
   let run state pc =
     State.(read state (read_mem state (pc + 1)))
+
+  let disassemble memory i =
+    Printf.printf "%d\tjmp\t%d\n" i memory.(i + 1);
+    i + 2
 end
 
 module Jt : Instruction = struct
@@ -75,6 +106,10 @@ module Jt : Instruction = struct
       pc + 3
     else
       Jmp.run state (pc + 1)
+
+  let disassemble memory i =
+    Printf.printf "%d\tjt\t%d\t%d\n" i memory.(i + 1) memory.(i + 2);
+    i + 3
 end
 
 module Jf : Instruction = struct
@@ -85,6 +120,10 @@ module Jf : Instruction = struct
       Jmp.run state (pc + 1)
     else
       pc + 3
+
+  let disassemble memory i =
+    Printf.printf "%d\tjf\t%d\t%d\n" i memory.(i + 1) memory.(i + 2);
+    i + 3
 end
 
 module Add : Instruction = struct
@@ -96,6 +135,10 @@ module Add : Instruction = struct
     let res  = (op1 + op2) mod 32768                in
     State.write state dest res;
     pc + 4
+
+  let disassemble memory i =
+    Printf.printf "%d\tadd\t%d\t%d\t%d\n" i memory.(i + 1) memory.(i + 2) memory.(i + 3);
+    i + 4
 end
 
 module Mul : Instruction = struct
@@ -107,6 +150,10 @@ module Mul : Instruction = struct
     let res  = (op1 * op2) mod 32768                in
     State.write state dest res;
     pc + 4
+
+  let disassemble memory i =
+    Printf.printf "%d\tmul\t%d\t%d\t%d\n" i memory.(i + 1) memory.(i + 2) memory.(i + 3);
+         i + 4
 end
 
 module Mod : Instruction = struct
@@ -118,6 +165,10 @@ module Mod : Instruction = struct
     let res  = op1 mod op2                          in
     State.write state dest res;
     pc + 4
+
+  let disassemble memory i =
+    Printf.printf "%d\tmod\t%d\t%d\t%d\n" i memory.(i + 1) memory.(i + 2) memory.(i + 3);
+    i + 4
 end
 
 module And : Instruction = struct
@@ -129,6 +180,10 @@ module And : Instruction = struct
     let res  = Int.logand op1 op2                   in
     State.write state dest res;
     pc + 4
+
+  let disassemble memory i =
+    Printf.printf "%d\tand\t%d\t%d\t%d\n" i memory.(i + 1) memory.(i + 2) memory.(i + 3);
+    i + 4
 end
 
 module Or : Instruction = struct
@@ -140,6 +195,10 @@ module Or : Instruction = struct
     let res  = Int.logor op1 op2                    in
     State.write state dest res;
     pc + 4
+
+  let disassemble memory i =
+    Printf.printf "%d\tor\t%d\t%d\t%d\n" i memory.(i + 1) memory.(i + 2) memory.(i + 3);
+    i + 4
 end
 
 module Not : Instruction = struct
@@ -151,6 +210,10 @@ module Not : Instruction = struct
     let res  = (Int.logand mask (Int.lognot op)) in
     State.write state dest res;
     pc + 3
+
+  let disassemble memory i =
+    Printf.printf "%d\tnot\t%d\t%d\n" i memory.(i + 1) memory.(i + 2);
+    i + 3
 end
 
 module Rmem : Instruction = struct
@@ -161,6 +224,10 @@ module Rmem : Instruction = struct
     let value = State.read_mem state addr in
     State.write state dest value;
     pc + 3
+
+  let disassemble memory i =
+    Printf.printf "%d\trmem\t%d\t%d\n" i memory.(i + 1) memory.(i + 2);
+    i + 3
 end
 
 module Wmem : Instruction = struct
@@ -170,6 +237,10 @@ module Wmem : Instruction = struct
     let value = State.(read state (read_mem state (pc + 2))) in
     State.write state addr value;
     pc + 3
+
+  let disassemble memory i =
+    Printf.printf "%d\twmem\t%d\t%d\n" i memory.(i + 1) memory.(i + 2);
+    i + 3
 end
 
 module Call : Instruction = struct
@@ -177,6 +248,10 @@ module Call : Instruction = struct
   let run state pc =
     State.write_stack state (pc + 2);
     Jmp.run state pc
+
+  let disassemble memory i =
+    Printf.printf "%d\tjmp\t%d\n" i memory.(i + 1);
+    i + 2
 end
 
 module Ret : Instruction = struct
@@ -187,6 +262,10 @@ module Ret : Instruction = struct
       pc
     with
       Stack.Empty -> raise Machine.Machine_halt
+
+  let disassemble _memory i =
+    Printf.printf "%d\tret\n" i;
+    i + 1
 end
 
 module Out : Instruction = struct
@@ -196,6 +275,15 @@ module Out : Instruction = struct
     let char  = char_of_int value in
     Io.write char;
     pc + 2
+
+  let disassemble memory i =
+    (try
+      let char = char_of_int memory.(i + 1) in
+      Printf.printf "%d\tout\t%c\n" i char;
+    with
+      Invalid_argument _ ->
+      Printf.printf "%d\tout\t%d" i memory.(i + 1));
+    i + 2
 end
 
 module In : Instruction = struct
@@ -207,10 +295,42 @@ module In : Instruction = struct
     let value = int_of_char input in
     State.write state dest value;
     pc + 2
+
+  let disassemble memory i =
+    Printf.printf "%d\tin\t%d\n" i memory.(i + 1);
+    i + 2
 end
 
 module Noop : Instruction = struct
   let opcode = 21
   let run _state pc = pc + 1
+
+  let disassemble _memory i =
+    Printf.printf "%d\tnoop\n" i;
+    i + 1
 end
 
+let match_opcode = function
+  | i when i == Halt.opcode -> (module Halt : Instruction)
+  | i when i == Set.opcode-> (module Set : Instruction)
+  | i when i == Push.opcode -> (module Push : Instruction)
+  | i when i == Pop.opcode -> (module Pop : Instruction)
+  | i when i == Eq.opcode -> (module Eq : Instruction)
+  | i when i == Gt.opcode -> (module Gt : Instruction)
+  | i when i == Jmp.opcode -> (module Jmp : Instruction)
+  | i when i == Jt.opcode -> (module Jt : Instruction)
+  | i when i == Jf.opcode -> (module Jf : Instruction)
+  | i when i == Add.opcode -> (module Add : Instruction)
+  | i when i == Mul.opcode -> (module Mul : Instruction)
+  | i when i == Mod.opcode -> (module Mod : Instruction)
+  | i when i == And.opcode -> (module And : Instruction)
+  | i when i == Or.opcode -> (module Or : Instruction)
+  | i when i == Not.opcode -> (module Not : Instruction)
+  | i when i == Rmem.opcode -> (module Rmem : Instruction)
+  | i when i == Wmem.opcode -> (module Wmem : Instruction)
+  | i when i == Call.opcode -> (module Call : Instruction)
+  | i when i == Ret.opcode -> (module Ret : Instruction)
+  | i when i == Out.opcode -> (module Out : Instruction)
+  | i when i == In.opcode -> (module In : Instruction)
+  | i when i == Noop.opcode -> (module Noop : Instruction)
+  | i -> raise (Unknown_instruction i)
